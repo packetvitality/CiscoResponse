@@ -11,7 +11,7 @@ To get started, download the repository. The script is dependant on the Netmiko 
 The script can: 
 Check if a device is vulnerable, 
 Pull tcp sessions related to SMI, 
-and and/or disable SMI.
+and/or disable SMI.
 
 These options can be used together. For example, you can specify -cd to check devices and disable the vulnerable devices. 
     
