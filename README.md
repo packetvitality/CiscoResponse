@@ -40,4 +40,4 @@ These options can be used together. For example, you can specify -cd to check de
 
 Tested with Python 3.6.5.
 
-Hope this is helpful! If you experience any issues let me know so I can resolve them.
+Hope this is helpful! If you experience any issues let me know so I can try to resolve them.
