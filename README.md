@@ -8,7 +8,8 @@ This script can: check if a device is vulnerable, pull tcp sessions related to S
 These options can be used together. For example, you can specify -cd to check devices and disable the vulnerable devices. 
 
 Dependant on the Netmiko library. Install Netmiko or use the provided requirements.txt file.
-pip install -r requirements.txt
+    
+    pip install -r requirements.txt
 
     Example Usage:
     --------------------------------
