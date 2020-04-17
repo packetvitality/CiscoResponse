@@ -264,7 +264,7 @@ def main():
     description=
     '''
     This is a script to aid in responding to Cisco Smart Install SMI misuse. Threat is covered in detailed by US-CERT alert TA18-106A.
-    This script can: check if a device is vulnerable, pull tcp sessions related to SMI, and and/or disable SMI.
+    This script can: check if a device is vulnerable, pull tcp sessions related to SMI, and/or disable SMI.
     These options can be used together. For example, you can specify -cd to check devices and disable the vulnerable devices. 
 
     Example Usage:
