@@ -16,7 +16,6 @@ and/or disable SMI.
 These options can be used together. For example, you can specify -cd to check devices and disable the vulnerable devices. 
     
 ## Example Usage
----------------
 ### Check if SMI is running on one device:
     python.exe SMIThreat.py -H 10.1.1.20 -c
 
