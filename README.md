@@ -1,4 +1,4 @@
-# SMIThreat
+# CiscoResponse
 This is a Python3 script to aid in responding to Cisco Smart Install SMI misuse. Threat is covered in detailed by US-CERT alert TA18-106A.
 
 A Cisco feature called Smart Install (SMI) can be exploited to steal configurations and lead to re-routed network traffic. SNMP can also be weaponized as well but will not be covered here. 
