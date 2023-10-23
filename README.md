@@ -41,6 +41,9 @@ These options can be used together. For example, you can specify -cd to check de
 
 ### Output Example 2:
     python.exe CiscoResponse.py -f "/path/to/file" -csdo "/path/to/file"
+
+### Custom Command Example:
+    python.exe CiscoResponse.py -x -f "cisco_devices.txt" -o "results.json"
 - - - -
 Tested with Python 3.6.5.
 
