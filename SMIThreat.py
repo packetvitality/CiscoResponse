@@ -7,12 +7,14 @@ import json
 import argparse
 import sys
 
-class SMIThreat:
+class CiscoResponse:
     """
-    Helps with responding to Cisco SMI exploitation as detailed in US Cert alert 'TA18-106A'
+    Helps with responding to Cisco vulnerabilities
+    Specificy functions built to deal with Cisco SMI exploitation as detailed in US Cert alert 'TA18-106A'
     Can check for the vulnerable service,\n
     identify connections / ioc's,\n
     disable the service.
+    Can run custom commands
     """
     def __init__(self, device_list_input, username, password):
         self.username = username
@@ -75,7 +77,7 @@ class SMIThreat:
                 with open(json_filename, 'w') as file:
                     myjson = json.dumps(data, indent=4)
                     file.write(myjson)
-                print("Session information saved to: \"{}\"".format(json_filename))
+                print("Results stored in: \"{}\"".format(json_filename))
             
             #Working with the rest of the data
             elif comment: #Store as a CSV with the comment
@@ -126,17 +128,69 @@ class SMIThreat:
                 pass
             
             #Login Failures
-            except netmiko.ssh_exception.NetMikoAuthenticationException:
+            except netmiko.exceptions.NetMikoAuthenticationException:
                 print("{} - Failed login attempt!".format(ip))
                 pass
             
             #Connection timeout
-            except netmiko.ssh_exception.NetMikoTimeoutException:
+            except netmiko.exceptions.NetMikoTimeoutException:
                 print("{} - Unable to connect to device!".format(ip))
                 pass
         
         if self.vulnerable_devices:
             return self.vulnerable_devices
+        else:
+            return False
+
+    def run_custom_command(self, command):
+        """
+        """
+        print("Running the provided command. . .\n")
+        custom_results = {}
+        for i in self.device_list:
+            #Settings for connection handler
+            ip = i.rstrip() #Remove whitespace
+            conn_setting = self._set_conn_settings(ip)
+            try:
+                #Establish Connection
+                net_connect = ConnectHandler(**conn_setting)
+                send = net_connect.send_command
+                net_connect.enable()
+                #Send commands & look for expected values
+                print("{} --> Connected".format(ip))
+                result = send(f"{command}") #Sending enable commands
+                if "invalid input" in result.lower(): #Device did not accept the command
+                    print("{} - Error received {}".format(ip, result))
+
+                else:
+                    result = result.split("\n")
+                    response = "{} --- {}".format(ip,result)
+                    print(response)
+                    custom_results[ip] = result
+
+                #Close connection
+                net_connect.disconnect()
+            
+            #General error, I think due to the device not responding
+            except OSError as e:
+                print("{} - Connection Error!".format(ip))
+                custom_results[ip] = str(e)
+                pass
+            
+            #Login Failures
+            except netmiko.exceptions.NetMikoAuthenticationException as e:
+                print("{} - Failed login attempt!".format(ip))
+                custom_results[ip] = str(e)
+                pass
+            
+            #Connection timeout
+            except netmiko.exceptions.NetMikoTimeoutException as e:
+                print("{} - Unable to connect to device!".format(ip))
+                custom_results[ip] = str(e)
+                pass
+        
+        if custom_results:
+            return custom_results
         else:
             return False
 
@@ -187,12 +241,12 @@ class SMIThreat:
                     pass
                 
                 #Login Failures
-                except netmiko.ssh_exception.NetMikoAuthenticationException:
+                except netmiko.exceptions.NetMikoAuthenticationException:
                     print("{} - Failed login attempt!\n".format(ip))
                     pass
                 
                 #Connection timeout
-                except netmiko.ssh_exception.NetMikoTimeoutException:
+                except netmiko.exceptions.NetMikoTimeoutException:
                     print("{} - Unable to connect to device!\n".format(ip))
                     pass
 
@@ -237,12 +291,12 @@ class SMIThreat:
                     pass
                 
                 #Login Failures
-                except netmiko.ssh_exception.NetMikoAuthenticationException:
+                except netmiko.exceptions.NetMikoAuthenticationException:
                     print("{} - Failed login attempt!\n".format(ip))
                     pass
                 
                 #Connection timeout
-                except netmiko.ssh_exception.NetMikoTimeoutException:
+                except netmiko.exceptions.NetMikoTimeoutException:
                     print("{} - Unable to connect to device!\n".format(ip))
                     pass
             if self.remediated_devices:
@@ -270,28 +324,32 @@ def main():
     Example Usage:
     --------------------------------
     Check if SMI is running on one device:
-    python.exe SMIThreat.py -H 10.1.1.20 -c
+    python.exe CiscoResponse.py -H 10.1.1.20 -c
 
     Check if SMI is running on all devices in the provided newline delimited file:
-    python.exe SMIThreat.py -f "/path/to/file" -c
+    python.exe CiscoResponse.py -f "/path/to/file" -c
 
     Disable SMI on all devices in the provided file:
-    python.exe SMIThreat.py -f "/path/to/file" -d
+    python.exe CiscoResponse.py -f "/path/to/file" -d
 
     Check if SMI is running on all devices in the provided newline delimited file, disable vulnerable devices:
-    python.exe SMIThreat.py -f "/path/to/file" -cd
+    python.exe CiscoResponse.py -f "/path/to/file" -cd
 
     Pull TCP sessions matching the SMI port:
-    python.exe SMIThreat.py -H myswitch.domain.internal -s
+    python.exe CiscoResponse.py -H myswitch.domain.internal -s
 
     Check if SMI is running on all devices in the provided newline delimited file, pull the TCP sessions matching the SMI port (4789):
-    python.exe SMIThreat.py -f "/path/to/file" -cs
+    python.exe CiscoResponse.py -f "/path/to/file" -cs
 
     Output Example 1:
-    python.exe SMIThreat.py -f "/path/to/file" -cdo "/path/to/file"
+    python.exe CiscoResponse.py -f "/path/to/file" -cdo "/path/to/file"
     
     Output Example 2:
-    python.exe SMIThreat.py -f "/path/to/file" -csdo "/path/to/file"
+    python.exe CiscoResponse.py -f "/path/to/file" -csdo "/path/to/file"
+
+    Custom Command Example:
+    python.exe CiscoResponse.py -x -f "cisco_devices.txt" -o "results.json"
+
     --------------------------------
     ''')
 
@@ -303,9 +361,11 @@ def main():
     parser.add_argument('--username', '-u', help='Username for logging into devices. Default is the currently logged in user.', default=getpass.getuser())
     parser.add_argument('--output', '-o', help='Output file. Be sure to use quotes like "path/to/file". If the sessions option is used, the output will be stored in JSON file.')
     #Optional Arguements that do not need parameters
-    parser.add_argument('--check', '-c', help='*IDENTIFICATION* Check devices to see if SMI services is running a client. Can feed vulnerable devices into the "sessions" or "disable" options.', action='store_true')
+    parser.add_argument('--check', '-c', help='*IDENTIFICATION* Check devices to see if SMI services is running a client. Can feed vulnerable devices into the "sessions" or "disable" options.', action='store_true')    
     parser.add_argument('--sessions', '-s', help='*CONTAINMENT / INTELLIGENCE GATHERING* Pulls the tcp sessions for the provided port 4786.', action='store_true')
     parser.add_argument('--disable', '-d', help='*ERADICATION* Disables the SMI service on the provided devices.', action='store_true')
+    #Custom Commands
+    parser.add_argument('--custom', '-x', help='Submit a custom command in enable mode.', action='store_true')
 
     args = parser.parse_args()
 
@@ -316,8 +376,8 @@ def main():
     if args.host and args.file:
         parser.error("Must provide a host or a file, not both.")
 
-    if not args.check and not args.sessions and not args.disable:
-        parser.error("Must provide at least one of the following options: -c, -s, -d")
+    if not args.check and not args.sessions and not args.disable and not args.custom:
+        parser.error("Must provide at least one of the following options: -c, -s, -d, -x")
 
     if args.host:
         device_list_input = args.host
@@ -339,12 +399,12 @@ def main():
     password = getpass.getpass()
 
     #Instantiate Object
-    SMI = SMIThreat(device_list_input, username, password)
+    SMI = CiscoResponse(device_list_input, username, password)
 
     #Check which options have been provided
     if args.check and args.sessions and args.disable: #The vulnerable devices from check are fed into sessions and disable
         vuln_devices = SMI.check_service()
-        SMI = SMIThreat(vuln_devices, username, password)
+        SMI = CiscoResponse(vuln_devices, username, password)
         sessions = SMI.get_sessions()
         remediated_devices = SMI.disable_service()
         if args.output:
@@ -359,7 +419,7 @@ def main():
     
     elif args.check and args.sessions: #The vulnerable devices from check are fed into sessions
         vuln_devices = SMI.check_service()
-        SMI = SMIThreat(vuln_devices, username, password)
+        SMI = CiscoResponse(vuln_devices, username, password)
         sessions = SMI.get_sessions()
         if args.output:
             write_results = SMI._output_to_file
@@ -368,7 +428,7 @@ def main():
 
     elif args.check and args.disable: #The vulnerable devices from check are fed into disable
         vuln_devices = SMI.check_service()
-        SMI = SMIThreat(vuln_devices, username, password)
+        SMI = CiscoResponse(vuln_devices, username, password)
         remediated_devices = SMI.disable_service()
         if args.output:
             write_results = SMI._output_to_file
@@ -399,6 +459,13 @@ def main():
         remediated_devices = SMI.disable_service()
         if args.output:
             SMI._output_to_file(out_file, remediated_devices)
+    
+    elif args.custom: #Only custom is provided
+        command = input("Enter your custom 'enable' level command: ")
+        command = eval(command) # remove quotes
+        results = SMI.run_custom_command(command)
+        if args.output:
+            SMI._output_to_file(out_file, results)
 
 def for_coders():
     """
@@ -413,17 +480,20 @@ def for_coders():
     password = getpass.getpass() #Prompt user for password
 
     #Specify input file. Must be a newline delimeted list of ips or hostnames
-    device_list_input = "path/to/file"
+    device_list_input = "C:\\file\\path"
+    out_file = "C:\\file\\path"
     
     #Instantiate the object
-    SMI = SMIThreat(device_list_input, username, password)
+    SMI = CiscoResponse(device_list_input, username, password)
 
     ###IDENTIFICATION
-    vuln_devices = SMI.check_service()
-    print(vuln_devices)
+    # vuln_devices = SMI.check_service()
+    # print(vuln_devices)
+    c = SMI.run_custom_command("show running-config | include ip http server|secure|active")
+    SMI._output_to_file(out_file, c)
 
     ###CONTAINMENT / INTELLIGENCE GATHERING
-    # SMI = SMIThreat(vuln_devices, username, password)
+    # SMI = CiscoResponse(vuln_devices, username, password)
     # sessions = SMI.get_sessions()
     # print(sessions)
 
@@ -431,11 +501,13 @@ def for_coders():
         #Made to work with the check_service() function
         #Feed in the vuln_devices variable identified above as a parameter
         #Will also accept a file
-    # SMI = SMIThreat(vuln_devices, username, password)
+    # SMI = CiscoResponse(vuln_devices, username, password)
     # remediated_services = SMI.disable_service()
     # print(remediated_services)
 
+## Use this function to run with command line, use options, etc
 if __name__ == '__main__':
     main()
     
-#for_coders()
+## Use this function to modify code, at custom functionality, etc.
+# for_coders()
