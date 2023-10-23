@@ -46,6 +46,8 @@ These options can be used together. For example, you can specify -cd to check de
 
 ### Custom Command Example:
     python.exe CiscoResponse.py -x -f "cisco_devices.txt" -o "results.json"
+    After entering your credentials, issue a command in "quotes". For example:
+    "show running-config | include ip http server|secure|active"
 - - - -
 Tested with Python 3.6.5.
 
